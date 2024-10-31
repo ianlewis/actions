@@ -1,0 +1,67 @@
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: actionlint
+author:
+description: Runs actionlint
+
+inputs:
+  actionlint_version:
+    description: "actionlint version"
+    required: false
+    default: "1.7.3"
+  actionlint_checksum:
+    description: "actionlint checksum"
+    required: false
+    default: "37252b4d440b56374b0fc1726e05fd7452d30d6d774f6e9b52e65bb64475f9db"
+  shellcheck_version:
+    description: "shellcheck version"
+    required: false
+    default: "0.10.0"
+  shellcheck_checksum:
+    description: "shellcheck checksum"
+    required: false
+    default: "6c881ab0698e4e6ea235245f22832860544f17ba386442fe7e9d629f8cbedf87"
+
+runs:
+  using: "composite"
+  steps:
+    - name: actionlint
+      env:
+        SHELLCHECK_VERSION: ${{inputs.shellcheck_version}}
+        SHELLCHECK_CHECKSUM: ${{inputs.shellcheck_checksum }}
+        ACTIONLINT_VERSION: ${{inputs.actionlint_version}}
+        ACTIONLINT_CHECKSUM: ${{inputs.actionlint_checksum}}
+      run: |
+        set -euo pipefail
+
+        # Install shellcheck
+        curl -sSLo shellcheck.tar.gz "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+        echo "shellcheck checksum is $(sha256sum shellcheck.tar.gz | awk '{ print $1 }')"
+        echo "expected checksum is $SHELLCHECK_CHECKSUM"
+        echo "$SHELLCHECK_CHECKSUM  shellcheck.tar.gz" | sha256sum --strict --check --status || exit 1
+
+        tar xf shellcheck.tar.gz
+        mv "shellcheck-v${SHELLCHECK_VERSION}/shellcheck" /usr/local/bin
+
+        # Install actionlint
+        curl -sSLo actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+        echo "actionlint checksum is $(sha256sum actionlint.tar.gz | awk '{ print $1 }')"
+        echo "expected checksum is $ACTIONLINT_CHECKSUM"
+        echo "$ACTIONLINT_CHECKSUM  actionlint.tar.gz" | sha256sum --strict --check --status || exit 1
+
+        tar xf actionlint.tar.gz
+        mv ./actionlint /usr/local/bin
+
+        make actionlint
